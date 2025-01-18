@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.hmdp.utils.RedisConstants.*;
+import static com.hmdp.utils.SystemConstants.USER_NICK_NAME_PREFIX;
 
 /**
  * <p>
@@ -59,7 +60,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 3. 输入合法,生成验证码
         String code = RandomUtil.randomNumbers(6);
 
-        // 3. 保存验证码到Redis
+        // 3. 保存验证码到Redis, 添加业务前缀
         stringRedisTemplate.opsForValue().set(LOGIN_CODE_KEY + phone, code, LOGIN_CODE_TTL, TimeUnit.MINUTES);
 
         // 4. 发送验证码
@@ -106,11 +107,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 将User转换成Hash存储
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
         Map<String, Object> usermap = BeanUtil.beanToMap(userDTO, new HashMap<>(),
-                CopyOptions.create().setIgnoreNullValue(true).setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
+                CopyOptions.create().
+                        setIgnoreNullValue(true).
+                        setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
 
-        // 存储
+        // 存储,设置有效期
         stringRedisTemplate.opsForHash().putAll(LOGIN_USER_KEY + token, usermap);
-        stringRedisTemplate.expire(LOGIN_USER_KEY+ token, LOGIN_USER_TTL, TimeUnit.MINUTES);
+        stringRedisTemplate.expire(LOGIN_USER_KEY + token, LOGIN_USER_TTL, TimeUnit.MINUTES);
 
         return Result.ok(token);
     }
@@ -119,7 +122,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     private User createUserWithPhone(String phone) {
         User user = new User();
         user.setPhone(phone);
-        user.setNickName(SystemConstants.USER_NICK_NAME_PREFIX + RandomUtil.randomString(10));
+        user.setNickName(USER_NICK_NAME_PREFIX + RandomUtil.randomString(10));
         save(user);
         return user;
     }

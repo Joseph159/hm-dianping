@@ -12,7 +12,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+
+import static com.hmdp.utils.RedisConstants.CACHE_NULL_TTL;
 
 /**
  * <p>
@@ -45,12 +48,18 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             Shop shop = JSONUtil.toBean(shopJson, Shop.class);
             return Result.ok(shop);
         }
+        // 判断命中是否为空值
+        if (Objects.equals(shopJson, "")) {
+            return Result.fail("店铺不存在");
+        }
 
         // 4. 不存在则查询数据库
         Shop shop = getById(id);
 
         // 5. 不存在返回错误
         if (shop == null) {
+            // 将空值写入Redis
+            stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
             return Result.fail("店铺不存在");
         }
 
